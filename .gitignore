@@ -1,0 +1,14 @@
+# Generated data — regeneratable from scripts, kept off git (same
+# convention as the_coffee_wrecks: code is versioned, data isn't).
+kraken2_db/
+results/
+
+# Logs
+*.log
+slurm-*.out
+output_*.txt
+errors_*.txt
+
+# OS / editor
+.DS_Store
+.vscode/

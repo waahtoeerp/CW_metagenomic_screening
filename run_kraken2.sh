@@ -43,4 +43,10 @@ kraken2 --db $DB_DIR \
     $FQ
 
 echo "Top 20 taxa by read count:"
-sort -t$'\t' -k3,3 -rn $OUTDIR/${SAMPLE}_kraken2_report.txt | head -20
+# `|| true`: this is a display-only tail, everything of substance (the
+# report file) is already written above. Without it, `head` closing the
+# pipe after 20 lines sends SIGPIPE to `sort`, and pipefail turns that
+# into a false-negative job failure despite the run having succeeded
+# (hit this for real on 2026-09-19 — both R0003/R0004 kraken2 jobs showed
+# SLURM state FAILED with a complete, correct report sitting right there).
+sort -t$'\t' -k3,3 -rn $OUTDIR/${SAMPLE}_kraken2_report.txt | head -20 || true

@@ -48,11 +48,17 @@ SEED=42
 mkdir -p $OUTDIR
 
 if [ -f "$SORTED_BAM" ]; then
-    echo "Precise mode: extracting true unmapped reads from $SORTED_BAM"
-    UNMAPPED_FQ=$OUTDIR/${SAMPLE}_unmapped_all.fq
-    samtools view -@ 2 -f 4 -b "$SORTED_BAM" | samtools fastq -@ 2 - > "$UNMAPPED_FQ"
-    seqtk sample -s$SEED "$UNMAPPED_FQ" $N_READS > $OUTDIR/${SAMPLE}_subsample.fq
-    rm -f "$UNMAPPED_FQ"
+    echo "Precise mode: streaming true unmapped reads from $SORTED_BAM through seqtk"
+    # Piped straight through — never materializes the full unmapped set on
+    # disk. ~99% of reads are unmapped (see PIPELINE.md's signal-funnel
+    # section), so writing that out first is ~60-70GB of uncompressed FASTQ
+    # per sample; doing exactly that is what blew the disk quota on
+    # 2026-09-19's first attempt. seqtk sample's default algorithm is
+    # single-pass reservoir sampling, confirmed to work over a pipe
+    # (/dev/stdin) before this fix was written.
+    samtools view -@ 2 -f 4 -b "$SORTED_BAM" \
+        | samtools fastq -@ 2 - \
+        | seqtk sample -s$SEED /dev/stdin $N_READS > $OUTDIR/${SAMPLE}_subsample.fq
 else
     echo "Approximate mode: no sorted.bam found (likely cleaned up), subsampling raw fastq instead"
     R1=$CW/vrouw_maria_2026_segments/Unknown_${SAMPLE}_1.fq.gz

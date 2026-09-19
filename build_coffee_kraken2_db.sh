@@ -24,6 +24,8 @@ set -euo pipefail
 # direct "does this look like coffee" answer) avoids that entirely, and is
 # arguably cleaner anyway -- one unambiguous signal per question.
 #
+# Requires ./download_coffee_taxonomy.sh to have been run first.
+#
 # Usage: ./build_coffee_kraken2_db.sh
 
 BASE=/scratch/project_2019675/CW_metagenomic_screening
@@ -36,9 +38,9 @@ REFS=$BASE/coffee_refs
 
 mkdir -p $REFS
 
-if [ ! -d "$DB/taxonomy" ]; then
-    echo "Downloading NCBI taxonomy..."
-    kraken2-build --download-taxonomy --db $DB
+if [ ! -f "$DB/taxonomy/nodes.dmp" ]; then
+    echo "Taxonomy not found at $DB/taxonomy — run ./download_coffee_taxonomy.sh first (login node, needs internet access compute nodes don't have)." >&2
+    exit 1
 fi
 
 # Tag each genome's FASTA headers with its NCBI taxid so kraken2-build

@@ -1,6 +1,8 @@
 # Generated data — regeneratable from scripts, kept off git (same
 # convention as the_coffee_wrecks: code is versioned, data isn't).
 kraken2_db/
+coffee_kraken2_db/
+coffee_refs/
 results/
 
 # Logs

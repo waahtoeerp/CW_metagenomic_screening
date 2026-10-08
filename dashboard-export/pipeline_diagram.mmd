@@ -1,0 +1,66 @@
+flowchart TD
+    subgraph CW["the_coffee_wrecks (source data)"]
+        BAM["bwa-out/SAMPLE_sorted.bam
+R0003, R0004 -- precise mode"]
+        FASTQ["raw fastq.gz
+R0002, R0005 -- approximate mode
+(BAMs cleaned up earlier; less than 1% mapping
+rate makes raw-read subsample ~equivalent)"]
+    end
+
+    BAM --> SUB["subsample_unmapped.sh
+samtools view -f 4 | samtools fastq | seqtk sample
+(streamed -- never writes the full
+unmapped set to disk)"]
+    FASTQ --> SUB
+    SUB --> FQ["results/SAMPLE/SAMPLE_subsample.fq.gz
+2,000,000 reads"]
+
+    FQ --> K1["run_kraken2.sh
+vs kraken2_db/ (PlusPF-8, prebuilt)"]
+    FQ --> K2["run_kraken2_coffee.sh
+vs coffee_kraken2_db/
+C. arabica + 2 diploid parents (built here)"]
+
+    K1 --> R1["SAMPLE_kraken2_report.txt
+environmental / contamination profile
+~95% unclassified; sediment/soil bacteria
++ trace human"]
+    K2 --> R2["SAMPLE_kraken2_coffee_report.txt
+559/2M (R0003), 607/2M (R0004)
+classified as Coffea"]
+
+    R2 --> EXTRACT["extract_coffee_hits.sh
+seqtk subseq on classified read IDs"]
+    EXTRACT --> HITS["SAMPLE_coffee_hits.fq.gz"]
+    HITS --> ALIGN["align_and_mapdamage.sh
+bwa aln -l 16500 -n 0.01
+(same params as base pipeline)"]
+    ALIGN --> RESULT["0/559, 0/607 aligned --
+below the 10-read mapDamage floor,
+mapDamage skipped (not just underpowered)"]
+
+    RESULT --> INVESTIGATE["Direct investigation:
+bwa mem re-alignment + NM/MAPQ +
+manual sequence review"]
+    INVESTIGATE --> GUESS["First pass (39-read subset, same day):
+called it microsatellite repeats"]
+    GUESS -.->|corrected, commit 8c5479c| RECHECK["Full 559+607 set re-aligned w/ bwa mem,
+chain-clustered by position,
+reference pulled at each cluster
+(samtools faidx) and read directly"]
+    RECHECK --> RRNA["10 of 12 largest clusters = bacterial 16S
+rRNA (27F/515F primer motifs),
+duplicated across several coffee
+chromosomes + the mitochondrial contig
+in the reference assembly itself"]
+    RRNA --> CONCLUSION["Conclusion unchanged: still 0 aligned,
+no recoverable coffee signal --
+mechanism now verified, not guessed"]
+
+    style R1 fill:#3a5a78,color:#fff,stroke:#2a4257
+    style R2 fill:#1a7f1a,color:#fff,stroke:#145914
+    style RESULT fill:#b8482f,color:#fff,stroke:#8f3722
+    style GUESS fill:#888,color:#fff,stroke:#666,stroke-dasharray: 5 5
+    style RRNA fill:#1a7f1a,color:#fff,stroke:#145914
+    style CONCLUSION fill:#1a7f1a,color:#fff,stroke:#145914

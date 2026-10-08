@@ -21,15 +21,23 @@ flowchart TD
     K1 --> R1["SAMPLE_kraken2_report.txt\nenvironmental / contamination profile"]
     K2 --> R2["SAMPLE_kraken2_coffee_report.txt\ndirect coffee-match check"]
 
-    R2 -.->|if real hits found| EXTRACT["extract Coffea-classified reads\n(planned, not yet run)"]
-    EXTRACT -.-> ALIGN["align to C. arabica reference\n(planned)"]
-    ALIGN -.-> MD["mapDamage\n(planned) -- confirms genuine aDNA\ndamage pattern vs. modern contaminant"]
+    R2 --> EXTRACT["extract_coffee_hits.sh\nseqtk subseq on classified read IDs\n559/607 reads (R0003/R0004)"]
+    EXTRACT --> HITS["SAMPLE_coffee_hits.fq.gz"]
+    HITS --> ALIGN["align_and_mapdamage.sh\nbwa aln -l 16500 -n 0.01\n(same params as base pipeline)"]
+    ALIGN --> RESULT["0/559, 0/607 aligned --\nbelow the 10-read mapDamage floor,\nso mapDamage skipped (not just underpowered)"]
+
+    RESULT --> INVESTIGATE["Direct investigation:\nbwa mem re-alignment + NM/MAPQ +\nmanual sequence review"]
+    INVESTIGATE --> GUESS["First pass (39-read subset, same day):\ncalled it microsatellite repeats"]
+    GUESS -.->|corrected, commit 8c5479c| RECHECK["Full 559+607 set re-aligned w/ bwa mem,\nchain-clustered by position,\nreference pulled at each cluster\n(samtools faidx) and read directly"]
+    RECHECK --> RRNA["10 of 12 largest clusters = bacterial 16S\nrRNA (27F/515F primer motifs),\nduplicated across several coffee\nchromosomes + the mitochondrial contig\nin the reference assembly itself"]
+    RRNA --> CONCLUSION["Conclusion unchanged: still 0 aligned,\nno recoverable coffee signal --\nmechanism now verified, not guessed"]
 
     style R1 fill:#c65b3f,color:#fff
     style R2 fill:#1a7f1a,color:#fff
-    style MD fill:#888,color:#fff,stroke-dasharray: 5 5
-    style EXTRACT fill:#888,color:#fff,stroke-dasharray: 5 5
-    style ALIGN fill:#888,color:#fff,stroke-dasharray: 5 5
+    style RESULT fill:#c65b3f,color:#fff
+    style GUESS fill:#888,color:#fff,stroke-dasharray: 5 5
+    style RRNA fill:#1a7f1a,color:#fff
+    style CONCLUSION fill:#1a7f1a,color:#fff
 ```
 
 Two Kraken2 databases, two different questions: **PlusPF-8** (broad, prebuilt) asks "what environmental/microbial contamination is this?"; the **dedicated coffee database** (built here) asks "does any of it actually look like coffee?" directly — a blended single database couldn't answer the second question at all, since PlusPF-8 has no plant genomes in it.

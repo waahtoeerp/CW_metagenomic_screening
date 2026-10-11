@@ -29,6 +29,29 @@ Rather than assume either answer, this repo taxonomically classifies a random su
 squeue -u $USER                 # check status
 ```
 
+## Coffee database and sanity checks
+
+Run once, in this order, before `run_kraken2_coffee.sh`:
+
+```bash
+./download_coffee_taxonomy.sh               # login node; fetches NCBI taxonomy over HTTPS
+sbatch build_coffee_kraken2_db.sh           # coffee_kraken2_db/ (includes the ET-39 reference)
+sbatch build_parents_kraken2_db.sh          # parents_kraken2_db/ (C. canephora + C. eugenioides only)
+```
+
+`build_parents_kraken2_db.sh` needs `coffee_kraken2_db/taxonomy/`. If it is missing (for example after `kraken2-build --clean`), rerun `download_coffee_taxonomy.sh`.
+
+Positive control: classify the deduplicated mapped reads from the base pipeline against each database. Both should classify essentially all of them as *Coffea*; if not, the database or Kraken2 setup is broken.
+
+```bash
+for s in CT600-007R0002 CT600-007R0003 CT600-007R0004 CT600-007R0005; do
+    sbatch positive_control.sh $s                       # coffee_kraken2_db (circular: contains the reference)
+    sbatch positive_control.sh $s parents_kraken2_db    # real test: reference not in this database
+done
+```
+
+Results: `results/<SAMPLE>/positive_control/<DB>/`. The parents-only run is the meaningful one, since its database doesn't contain the reference the reads were aligned to. Summary: `the_coffee_wrecks/visualization/viz-data/positive_control_kraken2.json`.
+
 ## Storage
 
 `kraken2_db/` and `results/` are gitignored (generated data, same convention as `the_coffee_wrecks`). Both live only on Roihu's `/scratch` — nothing here is archived to Allas yet.
